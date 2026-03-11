@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { FlowDocument, FlowNode, FlowEdge } from '../model/types';
 import { MermaidParser } from '../parser/mermaidParser';
+import { MermaidGenerator } from '../generator/mermaidGenerator';
 
 interface MerflowState {
   // Data
@@ -55,8 +56,9 @@ export const useMerflowStore = create<MerflowState>((set, get) => ({
   },
 
   updateModel: (document: FlowDocument) => {
-    // Cette action sera couplée au Générateur plus tard pour mettre à jour le code
-    set({ document, metadata: { ...document.metadata, isDirty: true } } as any);
+    // On génère le nouveau code à partir du document mis à jour
+    const code = MermaidGenerator.generate(document);
+    set({ document, code, selectedElementId: get().selectedElementId });
   },
 
   setViewMode: (viewMode) => set({ viewMode }),
