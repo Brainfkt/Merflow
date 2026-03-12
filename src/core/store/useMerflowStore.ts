@@ -16,6 +16,8 @@ interface MerflowState {
   // Actions
   setRawCode: (code: string) => void;
   updateModel: (document: FlowDocument) => void;
+  updateNode: (nodeId: string, data: Partial<FlowNode>) => void;
+  updateEdge: (edgeId: string, data: Partial<FlowEdge>) => void;
   setViewMode: (mode: 'preview' | 'canvas') => void;
   selectElement: (id: string | null) => void;
   toggleSidebar: () => void;
@@ -59,6 +61,34 @@ export const useMerflowStore = create<MerflowState>((set, get) => ({
     // On génère le nouveau code à partir du document mis à jour
     const code = MermaidGenerator.generate(document);
     set({ document, code, selectedElementId: get().selectedElementId });
+  },
+
+  updateNode: (nodeId, data) => {
+    const { document } = get();
+    const newNodes = document.nodes.map((node) => 
+      node.id === nodeId ? { ...node, ...data } : node
+    );
+    const newDoc = { ...document, nodes: newNodes };
+    // Trigger generic update to sync code
+    get().updateModel(newDoc);
+  },
+
+  updateEdge: (edgeId, data) => {
+    const { document } = get();
+    const newEdges = document.edges.map((edge) => 
+      edge.id === edgeId ? { ...edge, ...data } : edge
+    );
+    const newDoc = { ...document, edges: newEdges };
+    // Trigger generic update to sync code
+    get().updateModel(newDoc);
+  },
+
+  reset: () => {
+    set({ 
+      code: INITIAL_CODE, 
+      document: INITIAL_DOC, 
+      selectedElementId: null 
+    });
   },
 
   setViewMode: (viewMode) => set({ viewMode }),

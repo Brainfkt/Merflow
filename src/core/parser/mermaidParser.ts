@@ -1,4 +1,4 @@
-import { FlowDocument, FlowDirection, FlowNode, FlowEdge, NodeShape } from '../model/types';
+import { FlowDocument, FlowDirection, FlowNode, FlowEdge, NodeShape, FlowSubgraph } from '../model/types';
 
 /**
  * Parser Mermaid ciblé V1 pour flowchart.
@@ -45,11 +45,28 @@ export class MermaidParser {
 
     // Map pour éviter les doublons de nœuds et stocker les infos de base
     const nodeMap = new Map<string, FlowNode>();
+    let currentSubgraph: FlowSubgraph | null = null;
 
     // 2. Parcourir les lignes pour extraire nœuds et arêtes
     for (const line of lines) {
       if (this.DIRECTION_REGEX.test(line)) continue;
-      if (line.startsWith('subgraph') || line.startsWith('end')) continue; // Subgraphs ignorés en V1 simple
+
+      // Gestion des subgraphs
+      if (line.startsWith('subgraph')) {
+        const match = line.match(/subgraph\s+([a-zA-Z0-9_-]+)(?:\s*\[(.*?)\])?/);
+        if (match) {
+          const id = match[1];
+          const label = match[2] || id;
+          currentSubgraph = { id, label, nodes: [] };
+          doc.subgraphs.push(currentSubgraph);
+        }
+        continue;
+      }
+
+      if (line.startsWith('end')) {
+        currentSubgraph = null;
+        continue;
+      }
 
       // Tenter de parser une arête
       const edgeMatch = line.match(/([a-zA-Z0-9_-]+)\s*(-+>|--\s*.*?\s*-->|-.*?->|==>|==\s*.*?\s*==>)\s*([a-zA-Z0-9_-]+)/);
@@ -74,8 +91,8 @@ export class MermaidParser {
         });
 
         // S'assurer que les nœuds existent
-        this.ensureNode(sourceId, nodeMap);
-        this.ensureNode(targetId, nodeMap);
+        this.ensureNode(sourceId, nodeMap, currentSubgraph);
+        this.ensureNode(targetId, nodeMap, currentSubgraph);
         continue;
       }
 
@@ -90,9 +107,27 @@ export class MermaidParser {
         const node: FlowNode = {
           id,
           label: label || id,
-          shape: this.mapShape(openChar, closeChar)
+          shape: this.mapShape(openChar, closeChar),
+          subgraphId: currentSubgraph?.id
         };
-        nodeMap.set(id, node);
+        
+        // Si le nœud existe déjà (par ex. via une arête précédente), on met à jour ses infos
+        if (nodeMap.has(id)) {
+          const existing = nodeMap.get(id)!;
+          existing.label = node.label;
+          existing.shape = node.shape;
+          if (currentSubgraph) {
+             existing.subgraphId = currentSubgraph.id;
+             if (!currentSubgraph.nodes.includes(id)) {
+               currentSubgraph.nodes.push(id);
+             }
+          }
+        } else {
+          nodeMap.set(id, node);
+          if (currentSubgraph) {
+            currentSubgraph.nodes.push(id);
+          }
+        }
       }
     }
 
@@ -100,13 +135,26 @@ export class MermaidParser {
     return doc;
   }
 
-  private static ensureNode(id: string, map: Map<string, FlowNode>) {
+  private static ensureNode(id: string, map: Map<string, FlowNode>, currentSubgraph: FlowSubgraph | null) {
     if (!map.has(id)) {
       map.set(id, {
         id,
         label: id,
-        shape: 'rectangle'
+        shape: 'rectangle',
+        subgraphId: currentSubgraph?.id
       });
+      if (currentSubgraph) {
+        currentSubgraph.nodes.push(id);
+      }
+    } else if (currentSubgraph) {
+      // Si le nœud existe mais qu'on le rencontre dans un subgraph, on l'associe
+      const node = map.get(id)!;
+      if (!node.subgraphId) {
+        node.subgraphId = currentSubgraph.id;
+        if (!currentSubgraph.nodes.includes(id)) {
+          currentSubgraph.nodes.push(id);
+        }
+      }
     }
   }
 
