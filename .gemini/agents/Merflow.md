@@ -392,4 +392,5 @@ Donc :
 
 # Résultat final attendu
 
+
 Je veux que tu m’aides à produire un vrai repo GitHub sérieux pour **Merflow**, un éditeur desktop local-first de **flowcharts Mermaid**, moderne, propre, crédible, avec synchronisation entre code et édition visuelle structurée.
