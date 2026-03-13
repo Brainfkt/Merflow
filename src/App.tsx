@@ -5,9 +5,30 @@ import { MerflowCanvas } from './features/canvas/MerflowCanvas';
 import { PropertyInspector } from './features/inspector/PropertyInspector';
 import { useMerflowStore } from './core/store/useMerflowStore';
 import { FileCode, Play, MousePointer2, Save, Download, Undo2, Redo2, PanelRight } from 'lucide-react';
+import { save } from '@tauri-apps/plugin-dialog';
+import { writeTextFile } from '@tauri-apps/plugin-fs';
 
 const App: React.FC = () => {
-  const { viewMode, setViewMode, toggleSidebar, isSidebarOpen, reset } = useMerflowStore();
+  const { viewMode, setViewMode, toggleSidebar, isSidebarOpen, reset, code } = useMerflowStore();
+
+  const handleSave = async () => {
+    try {
+      const path = await save({
+        filters: [{
+          name: 'Mermaid',
+          extensions: ['mmd', 'mermaid', 'txt']
+        }],
+        defaultPath: 'diagram.mmd'
+      });
+
+      if (path) {
+        await writeTextFile(path, code);
+        console.log('File saved successfully to:', path);
+      }
+    } catch (error) {
+      console.error('Failed to save file:', error);
+    }
+  };
 
   const handleExportSVG = () => {
     const svgElement = document.querySelector('.mermaid svg');
@@ -22,6 +43,8 @@ const App: React.FC = () => {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+    } else {
+      console.warn('No SVG element found to export. Make sure you are in Preview mode.');
     }
   };
 
@@ -43,7 +66,11 @@ const App: React.FC = () => {
             >
               <FileCode size={18} />
             </button>
-            <button className="p-1.5 hover:bg-zinc-800 rounded-md transition-all text-zinc-400 hover:text-white" title="Save">
+            <button 
+              onClick={handleSave}
+              className="p-1.5 hover:bg-zinc-800 rounded-md transition-all text-zinc-400 hover:text-white" 
+              title="Save to Disk"
+            >
               <Save size={18} />
             </button>
             <button 
@@ -120,4 +147,5 @@ const App: React.FC = () => {
 };
 
 export default App;
+
 

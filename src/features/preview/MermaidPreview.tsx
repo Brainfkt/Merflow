@@ -51,7 +51,7 @@ export const MermaidPreview: React.FC = () => {
       
       <div 
         ref={containerRef} 
-        className={`max-w-full transition-opacity duration-300 ${error ? 'opacity-30 grayscale' : 'opacity-100'}`} 
+        className={`mermaid max-w-full transition-opacity duration-300 ${error ? 'opacity-30 grayscale' : 'opacity-100'}`} 
       />
       
       {!code.trim() && (
